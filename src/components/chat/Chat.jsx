@@ -124,8 +124,8 @@ const Chat = () => {
           </div>
         </div>
         <div className="icons">
-          <img src="./phone.png" alt="" />
-          <img src="./video.png" alt="" />
+          {/* <img src="./phone.png" alt="" />
+          <img src="./video.png" alt="" /> */}
           <img src="./info.png" alt="" />
         </div>
       </div>
