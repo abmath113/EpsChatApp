@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signOut,  // Import signOut
 } from "firebase/auth";
 import { auth, db } from "../../lib/firebase";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
@@ -16,6 +17,7 @@ const Login = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Track if the user is logged in
 
   const handleAvatar = (e) => {
     if (e.target.files[0]) {
@@ -84,6 +86,7 @@ const Login = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      setIsAuthenticated(true); // Set to true once logged in
     } catch (err) {
       console.log(err);
       toast.error(err.message);
@@ -92,26 +95,46 @@ const Login = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setIsAuthenticated(false); // Set to false once logged out
+      toast.success("Logged out successfully!");
+    } catch (err) {
+      console.log(err);
+      toast.error(err.message);
+    }
+  };
+
   return (
     <div className="login">
-      <div className="item">
-        <h2>Welcome back,</h2>
-        <form onSubmit={handleLogin}>
-          <input type="text" placeholder="Email" name="email" />
-          <input type="password" placeholder="Password" name="password" />
-          <button disabled={loading}>{loading ? "Loading" : "Sign In"}</button>
-        </form>
-      </div>
-      <div className="separator"></div>
-      <div className="item">
-        <h2>Create an Account</h2>
-        <form onSubmit={handleRegister}>
-          <input type="text" placeholder="Username" name="username" />
-          <input type="text" placeholder="Email" name="email" />
-          <input type="password" placeholder="Password" name="password" />
-          <button disabled={loading}>{loading ? "Loading" : "Sign Up"}</button>
-        </form>
-      </div>
+      {!isAuthenticated ? (
+        <>
+          <div className="item">
+            <h2>Welcome back,</h2>
+            <form onSubmit={handleLogin}>
+              <input type="text" placeholder="Email" name="email" />
+              <input type="password" placeholder="Password" name="password" />
+              <button disabled={loading}>{loading ? "Loading" : "Sign In"}</button>
+            </form>
+          </div>
+          <div className="separator"></div>
+          <div className="item">
+            <h2>Create an Account</h2>
+            <form onSubmit={handleRegister}>
+              <input type="text" placeholder="Username" name="username" />
+              <input type="text" placeholder="Email" name="email" />
+              <input type="password" placeholder="Password" name="password" />
+              <button disabled={loading}>{loading ? "Loading" : "Sign Up"}</button>
+            </form>
+          </div>
+        </>
+      ) : (
+        <div className="item">
+          <h2>You are logged in</h2>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
+      )}
     </div>
   );
 };
