@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./chat.css";
 import EmojiPicker from "emoji-picker-react";
 import {
+  arrayRemove,
   arrayUnion,
   doc,
   getDoc,
@@ -59,6 +60,49 @@ const Chat = () => {
     }
   };
 
+  const handleDeleteMessage = async (message) => {
+    try {
+      // Remove the specific message from the chat document
+      await updateDoc(doc(db, "chats", chatId), {
+        messages: arrayRemove(message)
+      });
+
+      // Update the last message in user chats if this was the last message
+      const userIDs = [currentUser.id, user.id];
+      userIDs.forEach(async (id) => {
+        const userChatsRef = doc(db, "userchats", id);
+        const userChatsSnapshot = await getDoc(userChatsRef);
+
+        if (userChatsSnapshot.exists()) {
+          const userChatsData = userChatsSnapshot.data();
+          const chatIndex = userChatsData.chats.findIndex(
+            (c) => c.chatId === chatId
+          );
+
+          // If the deleted message was the last message, update the last message
+          if (chatIndex !== -1) {
+            const remainingMessages = chat.messages.filter(
+              m => m !== message
+            );
+            
+            const newLastMessage = remainingMessages.length > 0 
+              ? remainingMessages[remainingMessages.length - 1].text 
+              : "";
+
+            userChatsData.chats[chatIndex].lastMessage = newLastMessage;
+            userChatsData.chats[chatIndex].updatedAt = Date.now();
+
+            await updateDoc(userChatsRef, {
+              chats: userChatsData.chats
+            });
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Error deleting message:", err);
+    }
+  };
+
   const handleSend = async () => {
     if (text === "") return;
 
@@ -69,13 +113,15 @@ const Chat = () => {
         imgUrl = await upload(img.file);
       }
 
+      const newMessage = {
+        senderId: currentUser.id,
+        text,
+        createdAt: new Date(),
+        ...(imgUrl && { img: imgUrl }),
+      };
+
       await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion({
-          senderId: currentUser.id,
-          text,
-          createdAt: new Date(),
-          ...(imgUrl && { img: imgUrl }),
-        }),
+        messages: arrayUnion(newMessage),
       });
 
       const userIDs = [currentUser.id, user.id];
@@ -141,6 +187,14 @@ const Chat = () => {
               {message.img && <img src={message.img} alt="" />}
               <p>{message.text}</p>
               <span>{format(message.createdAt.toDate())}</span>
+              {message.senderId === currentUser?.id && (
+                <button 
+                  className="delete-message"
+                  onClick={() => handleDeleteMessage(message)}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </div>
         ))}
